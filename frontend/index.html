@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista zakupów – MVP</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Aplikacja zakupowa</h1>
+</header>
+<main>
+    <section id="form-section">
+        <h2>Dodaj produkt</h2>
+        <div id="form-container"></div>
+    </section>
+
+    <section id="list-section">
+        <h2>Lista produktów</h2>
+
+        <div class="filters">
+            <label>
+                <input type="radio" name="filter" value="all" checked>
+                Wszystkie
+            </label>
+            <label>
+                <input type="radio" name="filter" value="withDate">
+                Z datą
+            </label>
+            <label>
+                <input type="radio" name="filter" value="withoutDate">
+                Bez daty
+            </label>
+        </div>
+
+        <div id="product-list"></div>
+    </section>
+
+</main>
+
+<script src="app.js"></script>
+<script src="components/productForm.js"></script>
+<script src="components/productList.js"></script>
+
+</body>
+</html>
