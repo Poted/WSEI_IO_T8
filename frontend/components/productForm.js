@@ -43,24 +43,43 @@ async function handleFormSubmit(e) {
     const payload = { name, quantity, unit, expiry_date };
 
     try {
-        const res = await fetch('http://localhost:5000/products', {
-            method: 'POST',
+        // Check if we're editing (editingProductId is set in productList.js)
+        const isEditing = window.editingProductId !== null && window.editingProductId !== undefined;
+        const url = isEditing 
+            ? `http://localhost:5000/products/${window.editingProductId}`
+            : 'http://localhost:5000/products';
+        const method = isEditing ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
-            showFormMessage('Błąd podczas dodawania produktu.');
+            const errorText = await res.text().catch(() => 'Unknown error');
+            console.error('Request failed:', res.status, errorText);
+            showFormMessage(isEditing ? 'Błąd podczas aktualizacji produktu.' : 'Błąd podczas dodawania produktu.');
             return;
         }
 
-        showFormMessage('Dodano produkt.');
+        showFormMessage(isEditing ? 'Zaktualizowano produkt.' : 'Dodano produkt.');
         e.target.reset();
+
+        // Reset editing state
+        window.editingProductId = null;
+
+        // Reset button text
+        const submitButton = document.querySelector('#product-form button[type="submit"]');
+        if (submitButton) {
+            submitButton.textContent = 'Dodaj produkt';
+        }
 
         if (typeof loadProducts === 'function') loadProducts();
 
-    } catch {
-        showFormMessage('Błąd połączenia z backendem.');
+    } catch (error) {
+        console.error('Error submitting form:', error);
+        showFormMessage('Błąd połączenia z backendem. Sprawdź czy backend działa na porcie 5000.');
     }
 }
 

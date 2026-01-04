@@ -48,29 +48,112 @@ WSEI_IO_T8/
 
 ## Running the Application
 
-### Backend
-1. Open the `backend/` folder in Visual Studio or VS Code.
-2. Run the ASP.NET project (`dotnet run`).
-3. API available at: `http://localhost:5000`.
+### Prerequisites
+- .NET 10.0 SDK installed
+- A modern web browser (Chrome, Firefox, Edge, etc.)
 
-### Frontend
-1. Open `frontend/index.html` in a browser.
-2. The application works locally without a server.
+### Quick Start (Recommended)
+1. Navigate to the project root directory
+2. Run: `npm run dev` (or `node run.js`)
+   - This will start the backend server and open the frontend in your browser
+
+### Manual Start
+
+#### Backend
+1. Navigate to `backend/T8/` directory
+2. Run: `dotnet run`
+3. The API will be available at: `http://localhost:5000`
+4. **Swagger UI** is available at: `http://localhost:5000/swagger` 
+5. **OpenAPI JSON** is available at: `http://localhost:5000/openapi/v1.json` - Raw OpenAPI specification
+6. The SQLite database (`products.db`) will be automatically created in the `backend/T8/` directory
+
+#### Frontend
+**Option 1: Direct file (requires backend running)**
+1. Open `frontend/index.html` directly in your browser (file:// protocol)
+2. The frontend will connect to the backend API
+
+**Option 2: Via backend (recommended)**
+1. With the backend running, navigate to `http://localhost:5000` in the browser
+2. The backend serves the frontend files automatically
+
+## API Testing with Swagger
+
+**Swagger UI** provides an interactive interface to test all API endpoints directly from your browser:
+
+1. Start the backend server: `cd backend/T8 && dotnet run`
+2. Navigate to: `http://localhost:5000/swagger` in your browser
+3. You can now:
+   - View all available endpoints (GET, POST, PUT, DELETE)
+   - Test each endpoint directly in the browser
+   - See request/response schemas
+   - Execute API calls and see responses in real-time
+   - Test with different request bodies and parameters
+
+This is useful for testing the backend without using the frontend interface. The Swagger UI loads the OpenAPI specification from `/openapi/v1.json` which is automatically generated from controllers.
 
 ## API Endpoints
-- `GET /products` – list products  
-- `POST /products` – add product  
-- `PUT /products/{id}` – update product  
-- `DELETE /products/{id}` – delete product  
 
-## Sanity Test
-1. Start backend  
-2. Open frontend  
-3. Add a product  
-4. Verify it appears in the list  
-5. Delete the product  
-6. Verify it is removed  
+All endpoints are available at `http://localhost:5000/products`
+
+- `GET /products` – Get all products (sorted by expiration date)
+- `GET /products/{id}` – Get a specific product by ID
+- `POST /products` – Create a new product
+  ```json
+  {
+    "name": "Milk",
+    "quantity": 2,
+    "unit": "l",
+    "expiry_date": "2024-12-31"
+  }
+  ```
+- `PUT /products/{id}` – Update an existing product
+- `DELETE /products/{id}` – Delete a product
+
+## Testing the Application
+
+### Basic Functionality Test
+1. **Start the backend**: `cd backend/T8 && dotnet run`
+2. **Open the frontend**: Open `frontend/index.html` in the browser or navigate to `http://localhost:5000`
+3. **Add a product**:
+   - Fill in: Name (e.g., "Milk"), Quantity (e.g., 2), Unit (e.g., "l")
+   - Optionally add an expiration date
+   - Click "Dodaj produkt"
+   - Verify the product appears in the list
+4. **Edit a product**:
+   - Click "Edytuj" on any product
+   - Modify the fields in the form
+   - Click "Zaktualizuj produkt"
+   - Verify changes are reflected in the list
+5. **Delete a product**:
+   - Click "Usuń" on any product
+   - Verify the product is removed from the list
+6. **Filter products**:
+   - Use radio buttons to filter: "Wszystkie", "Z datą", "Bez daty"
+   - Verify filtering works correctly
+7. **Sort by expiration date**:
+   - Add multiple products with different expiration dates
+   - Verify products are sorted by expiration date (earliest first)
+
+### Database Test
+1. Stop the backend
+2. Check that `backend/T8/products.db` file exists
+3. Restart the backend
+4. Verify all previously added products are still present (data persistence)
+
+### Offline Mode Test
+1. Start the backend and add some products
+2. Stop the backend server
+3. The frontend will show connection errors when trying to load/save
+4. Restart the backend
+5. Verify data is still intact (SQLite database persists locally)
+
+## Database
+
+The application uses SQLite for local data storage:
+- Database file: `backend/T8/products.db`
+- Automatically created on first run
+- Data persists between application restarts
+- No external database server required (offline-capable)  
 
 ---
 
-If you want, I can also prepare a shorter version, a more formal academic version, or a version with sections tailored to your assignment requirements.
