@@ -21,13 +21,57 @@ public class ProductsController : ControllerBase
 
     // GET: api/products
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(
+        [FromQuery] string? filter = null,
+        [FromQuery] string? sortOrder = "asc")
     {
         try
         {
-            var products = await _context.Products
-                .OrderBy(p => p.ExpiryDate == null ? DateTime.MaxValue : p.ExpiryDate)
-                .ToListAsync();
+            var today = DateTime.Today;
+            var query = _context.Products.AsQueryable();
+
+            // Apply filtering based on expiry date
+            if (!string.IsNullOrEmpty(filter))
+            {
+                switch (filter.ToLower())
+                {
+                    case "withdate":
+                        query = query.Where(p => p.ExpiryDate != null);
+                        break;
+                    case "withoutdate":
+                        query = query.Where(p => p.ExpiryDate == null);
+                        break;
+                    case "expired":
+                        query = query.Where(p => p.ExpiryDate != null && p.ExpiryDate < today);
+                        break;
+                    case "expiringsoon":
+                        var nextWeek = today.AddDays(7);
+                        query = query.Where(p => p.ExpiryDate != null && 
+                            p.ExpiryDate >= today && p.ExpiryDate <= nextWeek);
+                        break;
+                    case "expiringthismonth":
+                        var endOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+                        query = query.Where(p => p.ExpiryDate != null && 
+                            p.ExpiryDate >= today && p.ExpiryDate <= endOfMonth);
+                        break;
+                    case "valid":
+                        query = query.Where(p => p.ExpiryDate == null || p.ExpiryDate >= today);
+                        break;
+                }
+            }
+
+            // Apply sorting
+            if (sortOrder?.ToLower() == "desc")
+            {
+                query = query.OrderByDescending(p => p.ExpiryDate == null ? DateTime.MinValue : p.ExpiryDate);
+            }
+            else
+            {
+                // Default: ascending (earliest first), null dates last
+                query = query.OrderBy(p => p.ExpiryDate == null ? DateTime.MaxValue : p.ExpiryDate);
+            }
+
+            var products = await query.ToListAsync();
 
             return Ok(products.Select(p => new ProductDto
             {
@@ -83,6 +127,21 @@ public class ProductsController : ControllerBase
             return BadRequest(ModelState);
         }
         
+        // Validate and parse expiry date
+        DateTime? expiryDate = null;
+        if (!string.IsNullOrWhiteSpace(dto.ExpiryDate))
+        {
+            if (!DateTime.TryParseExact(dto.ExpiryDate.Trim(), "yyyy-MM-dd", 
+                System.Globalization.CultureInfo.InvariantCulture, 
+                System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                ModelState.AddModelError(nameof(dto.ExpiryDate), 
+                    "Expiry date must be in the format yyyy-MM-dd (e.g., 2024-12-31)");
+                return BadRequest(ModelState);
+            }
+            expiryDate = parsedDate;
+        }
+        
         try
         {
 
@@ -91,9 +150,7 @@ public class ProductsController : ControllerBase
                 Name = dto.Name.Trim(),
                 Quantity = dto.Quantity,
                 Unit = dto.Unit,
-                ExpiryDate = !string.IsNullOrEmpty(dto.ExpiryDate) && DateTime.TryParse(dto.ExpiryDate, out var date) 
-                    ? date 
-                    : null
+                ExpiryDate = expiryDate
             };
 
             _context.Products.Add(product);
@@ -131,6 +188,21 @@ public class ProductsController : ControllerBase
             return BadRequest(ModelState);
         }
         
+        // Validate and parse expiry date
+        DateTime? expiryDate = null;
+        if (!string.IsNullOrWhiteSpace(dto.ExpiryDate))
+        {
+            if (!DateTime.TryParseExact(dto.ExpiryDate.Trim(), "yyyy-MM-dd", 
+                System.Globalization.CultureInfo.InvariantCulture, 
+                System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                ModelState.AddModelError(nameof(dto.ExpiryDate), 
+                    "Expiry date must be in the format yyyy-MM-dd (e.g., 2024-12-31)");
+                return BadRequest(ModelState);
+            }
+            expiryDate = parsedDate;
+        }
+        
         try
         {
             var product = await _context.Products.FindAsync(id);
@@ -143,9 +215,7 @@ public class ProductsController : ControllerBase
             product.Name = dto.Name.Trim();
             product.Quantity = dto.Quantity;
             product.Unit = dto.Unit;
-            product.ExpiryDate = !string.IsNullOrEmpty(dto.ExpiryDate) && DateTime.TryParse(dto.ExpiryDate, out var date) 
-                ? date 
-                : null;
+            product.ExpiryDate = expiryDate;
 
             try
             {

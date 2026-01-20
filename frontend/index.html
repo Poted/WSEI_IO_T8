@@ -10,6 +10,7 @@
 
 <header>
     <h1>Aplikacja zakupowa</h1>
+    <div id="online-status" style="margin-top: 10px; font-size: 14px; font-weight: normal;">🟢 Online</div>
 </header>
 <main>
     <section id="form-section">
@@ -21,18 +22,48 @@
         <h2>Lista produktów</h2>
 
         <div class="filters">
-            <label>
-                <input type="radio" name="filter" value="all" checked>
-                Wszystkie
-            </label>
-            <label>
-                <input type="radio" name="filter" value="withDate">
-                Z datą
-            </label>
-            <label>
-                <input type="radio" name="filter" value="withoutDate">
-                Bez daty
-            </label>
+            <div class="filter-group">
+                <h3>Filtruj:</h3>
+                <label>
+                    <input type="radio" name="filter" value="all" checked>
+                    Wszystkie
+                </label>
+                <label>
+                    <input type="radio" name="filter" value="withDate">
+                    Z datą
+                </label>
+                <label>
+                    <input type="radio" name="filter" value="withoutDate">
+                    Bez daty
+                </label>
+                <label>
+                    <input type="radio" name="filter" value="expired">
+                    ⚠️ Przeterminowane
+                </label>
+                <label>
+                    <input type="radio" name="filter" value="expiringSoon">
+                    🔴 Wygasają wkrótce (7 dni)
+                </label>
+                <label>
+                    <input type="radio" name="filter" value="expiringThisMonth">
+                    🟡 Wygasają w tym miesiącu
+                </label>
+                <label>
+                    <input type="radio" name="filter" value="valid">
+                    ✅ Ważne
+                </label>
+            </div>
+            <div class="sort-group">
+                <h3>Sortuj:</h3>
+                <label>
+                    <input type="radio" name="sortOrder" value="asc" checked>
+                    ⬆️ Od najwcześniejszej daty
+                </label>
+                <label>
+                    <input type="radio" name="sortOrder" value="desc">
+                    ⬇️ Od najpóźniejszej daty
+                </label>
+            </div>
         </div>
 
         <div id="product-list"></div>
@@ -41,6 +72,8 @@
 </main>
 
 <script src="app.js"></script>
+<script src="services/localStorage.js"></script>
+<script src="services/apiService.js"></script>
 <script src="components/productForm.js"></script>
 <script src="components/productList.js"></script>
 

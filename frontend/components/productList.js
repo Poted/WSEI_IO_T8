@@ -17,26 +17,8 @@ async function loadProducts(retryCount = 0) {
     showLoading();
     
     try {
-        const res = await fetch('http://localhost:5000/products');
-        
-        if (!res.ok) {
-            if (res.status === 0 || res.status >= 500) {
-                if (retryCount < MAX_RETRIES) {
-                    console.log(`Backend not ready, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-                    isLoading = false;
-                    setTimeout(() => loadProducts(retryCount + 1), RETRY_DELAY);
-                    return;
-                }
-            }
-            
-            const errorText = await res.text().catch(() => 'Unknown error');
-            console.error('Failed to load products:', res.status, errorText);
-            listContainer.innerHTML = '<p>Błąd pobierania danych. Sprawdź czy backend działa.</p>';
-            isLoading = false;
-            return;
-        }
-        
-        products = await res.json();
+        // Use API service (supports offline mode)
+        products = await window.apiService.getProducts();
         
         if (!Array.isArray(products)) {
             console.error('Invalid response format:', products);
@@ -44,18 +26,47 @@ async function loadProducts(retryCount = 0) {
         }
         
         renderProducts();
+        updateOnlineStatus();
         isLoading = false;
     } catch (error) {
-        if (retryCount < MAX_RETRIES) {
-            console.log(`Connection error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-            isLoading = false;
-            setTimeout(() => loadProducts(retryCount + 1), RETRY_DELAY);
-            return;
-        }
-        
         console.error('Error loading products:', error);
-        listContainer.innerHTML = '<p>Błąd połączenia z backendem. Sprawdź czy backend działa na porcie 5000.</p>';
+        // Even on error, try to show local storage data
+        products = window.localStorageService.getProducts();
+        renderProducts();
+        updateOnlineStatus();
         isLoading = false;
+    }
+}
+
+function updateOnlineStatus() {
+    const statusEl = document.getElementById('online-status');
+    if (statusEl) {
+        statusEl.textContent = window.apiService.isOnline 
+            ? '🟢 Online' 
+            : '🔴 Offline (tryb lokalny)';
+        statusEl.style.color = window.apiService.isOnline ? 'green' : 'orange';
+    }
+}
+
+function getExpiryStatus(expiryDate) {
+    if (!expiryDate) return { status: 'none', icon: '', class: '' };
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+    const daysUntilExpiry = Math.floor((expiry - today) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilExpiry < 0) {
+        return { status: 'expired', icon: '⚠️', class: 'expired', days: Math.abs(daysUntilExpiry) };
+    } else if (daysUntilExpiry === 0) {
+        return { status: 'today', icon: '🔴', class: 'expiring-today', days: 0 };
+    } else if (daysUntilExpiry <= 7) {
+        return { status: 'soon', icon: '🔴', class: 'expiring-soon', days: daysUntilExpiry };
+    } else if (daysUntilExpiry <= 30) {
+        return { status: 'month', icon: '🟡', class: 'expiring-month', days: daysUntilExpiry };
+    } else {
+        return { status: 'valid', icon: '✅', class: 'valid', days: daysUntilExpiry };
     }
 }
 
@@ -66,23 +77,85 @@ function renderProducts() {
     }
     
     const filter = document.querySelector('input[name="filter"]:checked')?.value || 'all';
+    const sortOrder = document.querySelector('input[name="sortOrder"]:checked')?.value || 'asc';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     let filtered = products;
 
-    if (filter === 'withDate') {
-        filtered = products.filter(p => p.expiry_date);
+    // Apply filtering
+    switch (filter) {
+        case 'withDate':
+            filtered = products.filter(p => p.expiry_date);
+            break;
+        case 'withoutDate':
+            filtered = products.filter(p => !p.expiry_date);
+            break;
+        case 'expired':
+            filtered = products.filter(p => {
+                if (!p.expiry_date) return false;
+                const expiry = new Date(p.expiry_date);
+                expiry.setHours(0, 0, 0, 0);
+                return expiry < today;
+            });
+            break;
+        case 'expiringSoon':
+            const nextWeek = new Date(today);
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            filtered = products.filter(p => {
+                if (!p.expiry_date) return false;
+                const expiry = new Date(p.expiry_date);
+                expiry.setHours(0, 0, 0, 0);
+                return expiry >= today && expiry <= nextWeek;
+            });
+            break;
+        case 'expiringThisMonth':
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            filtered = products.filter(p => {
+                if (!p.expiry_date) return false;
+                const expiry = new Date(p.expiry_date);
+                expiry.setHours(0, 0, 0, 0);
+                return expiry >= today && expiry <= endOfMonth;
+            });
+            break;
+        case 'valid':
+            filtered = products.filter(p => {
+                if (!p.expiry_date) return true;
+                const expiry = new Date(p.expiry_date);
+                expiry.setHours(0, 0, 0, 0);
+                return expiry >= today;
+            });
+            break;
+        case 'all':
+        default:
+            filtered = products;
+            break;
     }
 
-    if (filter === 'withoutDate') {
-        filtered = products.filter(p => !p.expiry_date);
-    }
-
+    // Apply sorting
     filtered.sort((a, b) => {
-        if (!a.expiry_date && !b.expiry_date) return 0;
-        if (!a.expiry_date) return 1;
-        if (!b.expiry_date) return -1;
-        return new Date(a.expiry_date) - new Date(b.expiry_date);
+        const aDate = a.expiry_date ? new Date(a.expiry_date) : null;
+        const bDate = b.expiry_date ? new Date(b.expiry_date) : null;
+        
+        if (sortOrder === 'desc') {
+            // Descending: latest first, null dates first
+            if (!aDate && !bDate) return 0;
+            if (!aDate) return -1;
+            if (!bDate) return 1;
+            return bDate - aDate;
+        } else {
+            // Ascending: earliest first, null dates last
+            if (!aDate && !bDate) return 0;
+            if (!aDate) return 1;
+            if (!bDate) return -1;
+            return aDate - bDate;
+        }
     });
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = '<p>Brak produktów spełniających wybrane kryteria filtrowania.</p>';
+        return;
+    }
 
     listContainer.innerHTML = `
         <table>
@@ -92,22 +165,39 @@ function renderProducts() {
                     <th>Ilość</th>
                     <th>Jednostka</th>
                     <th>Data ważności</th>
+                    <th>Status</th>
                     <th>Akcje</th>
                 </tr>
             </thead>
             <tbody>
-                ${filtered.map(p => `
-                    <tr>
-                        <td>${p.name || '-'}</td>
+                ${filtered.map(p => {
+                    const expiryStatus = getExpiryStatus(p.expiry_date);
+                    const statusText = expiryStatus.status === 'expired' 
+                        ? `Przeterminowane (${expiryStatus.days} dni temu)`
+                        : expiryStatus.status === 'today'
+                        ? 'Wygasa dzisiaj!'
+                        : expiryStatus.status === 'soon'
+                        ? `Wygasa za ${expiryStatus.days} ${expiryStatus.days === 1 ? 'dzień' : 'dni'}`
+                        : expiryStatus.status === 'month'
+                        ? `Wygasa za ${expiryStatus.days} dni`
+                        : expiryStatus.status === 'valid'
+                        ? `Ważne jeszcze ${expiryStatus.days} dni`
+                        : 'Bez daty';
+                    
+                    return `
+                    <tr class="${expiryStatus.class}">
+                        <td>${p.name || '-'} ${p._offline ? '🔴' : ''}</td>
                         <td>${p.quantity || 0}</td>
                         <td>${p.unit || '-'}</td>
                         <td>${p.expiry_date || '-'}</td>
+                        <td><span class="status-badge">${expiryStatus.icon} ${statusText}</span></td>
                         <td>
                             <button onclick="editProduct(${p.id})">Edytuj</button>
                             <button onclick="deleteProduct(${p.id})">Usuń</button>
                         </td>
                     </tr>
-                `).join('')}
+                `;
+                }).join('')}
             </tbody>
         </table>
     `;
@@ -119,21 +209,19 @@ async function deleteProduct(id) {
     }
     
     try {
-        const res = await fetch(`http://localhost:5000/products/${id}`, {
-            method: 'DELETE'
-        });
-        
-        if (!res.ok) {
-            const errorText = await res.text().catch(() => 'Unknown error');
-            console.error('Failed to delete product:', res.status, errorText);
+        const success = await window.apiService.deleteProduct(id);
+        if (success) {
+            loadProducts();
+            updateOnlineStatus();
+        } else {
             alert('Błąd podczas usuwania produktu.');
-            return;
         }
-        
-        loadProducts();
     } catch (error) {
         console.error('Error deleting product:', error);
-        alert('Błąd połączenia z backendem.');
+        // Still try to remove from local view
+        products = products.filter(p => p.id !== id);
+        renderProducts();
+        updateOnlineStatus();
     }
 }
 
@@ -178,6 +266,16 @@ async function editProduct(id) {
 }
 
 filterRadios.forEach(r => r.addEventListener('change', renderProducts));
+
+// Also listen for sort order changes
+document.addEventListener('DOMContentLoaded', () => {
+    const sortRadios = document.querySelectorAll('input[name="sortOrder"]');
+    sortRadios.forEach(r => r.addEventListener('change', renderProducts));
+});
+
+// Listen for sort order changes after page load
+const sortRadios = document.querySelectorAll('input[name="sortOrder"]');
+sortRadios.forEach(r => r.addEventListener('change', renderProducts));
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

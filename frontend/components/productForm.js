@@ -45,25 +45,22 @@ async function handleFormSubmit(e) {
     try {
         // Check if we're editing (editingProductId is set in productList.js)
         const isEditing = window.editingProductId !== null && window.editingProductId !== undefined;
-        const url = isEditing 
-            ? `http://localhost:5000/products/${window.editingProductId}`
-            : 'http://localhost:5000/products';
-        const method = isEditing ? 'PUT' : 'POST';
+        
+        let result;
+        if (isEditing) {
+            result = await window.apiService.updateProduct(window.editingProductId, payload);
+        } else {
+            result = await window.apiService.createProduct(payload);
+        }
 
-        const res = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            const errorText = await res.text().catch(() => 'Unknown error');
-            console.error('Request failed:', res.status, errorText);
+        if (!result) {
             showFormMessage(isEditing ? 'Błąd podczas aktualizacji produktu.' : 'Błąd podczas dodawania produktu.');
             return;
         }
 
-        showFormMessage(isEditing ? 'Zaktualizowano produkt.' : 'Dodano produkt.');
+        const isOffline = !window.apiService.isOnline;
+        const offlineMsg = isOffline ? ' (tryb offline - zostanie zsynchronizowane po przywróceniu połączenia)' : '';
+        showFormMessage(isEditing ? `Zaktualizowano produkt.${offlineMsg}` : `Dodano produkt.${offlineMsg}`);
         e.target.reset();
 
         // Reset editing state
@@ -76,10 +73,14 @@ async function handleFormSubmit(e) {
         }
 
         if (typeof loadProducts === 'function') loadProducts();
+        if (typeof updateOnlineStatus === 'function') updateOnlineStatus();
 
     } catch (error) {
         console.error('Error submitting form:', error);
-        showFormMessage('Błąd połączenia z backendem. Sprawdź czy backend działa na porcie 5000.');
+        const isOffline = !window.apiService.isOnline;
+        showFormMessage(isOffline 
+            ? 'Zapisano lokalnie (tryb offline). Zmiany zostaną zsynchronizowane po przywróceniu połączenia.'
+            : 'Błąd podczas przetwarzania żądania.');
     }
 }
 

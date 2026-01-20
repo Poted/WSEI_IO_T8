@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using T8.Validation;
 
 namespace T8.DTOs;
 
@@ -38,6 +39,7 @@ public class CreateProductDto
     [JsonPropertyName("unit")]
     public string Unit { get; set; } = string.Empty;
     
+    [DateFormat(ErrorMessage = "Expiry date must be in the format yyyy-MM-dd (e.g., 2024-12-31)")]
     [JsonPropertyName("expiry_date")]
     public string? ExpiryDate { get; set; }
 }
@@ -59,6 +61,7 @@ public class UpdateProductDto
     [JsonPropertyName("unit")]
     public string Unit { get; set; } = string.Empty;
     
+    [DateFormat(ErrorMessage = "Expiry date must be in the format yyyy-MM-dd (e.g., 2024-12-31)")]
     [JsonPropertyName("expiry_date")]
     public string? ExpiryDate { get; set; }
 }

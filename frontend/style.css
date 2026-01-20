@@ -61,5 +61,114 @@ table th, table td {
 }
 
 .filters {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.filter-group,
+.sort-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group h3,
+.sort-group h3 {
+    margin-top: 0;
     margin-bottom: 10px;
+    font-size: 16px;
+    color: #333;
+}
+
+.filter-group label,
+.sort-group label {
+    display: block;
+    margin: 8px 0;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.filter-group label:hover,
+.sort-group label:hover {
+    background-color: #f0f0f0;
+}
+
+.filter-group input[type="radio"],
+.sort-group input[type="radio"] {
+    width: auto;
+    margin-right: 8px;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Expiry status row styling */
+tr.expired {
+    background-color: #ffebee;
+}
+
+tr.expired td {
+    color: #c62828;
+}
+
+tr.expiring-today {
+    background-color: #fff3e0;
+}
+
+tr.expiring-today td {
+    color: #e65100;
+}
+
+tr.expiring-soon {
+    background-color: #fff8e1;
+}
+
+tr.expiring-soon td {
+    color: #f57f17;
+}
+
+tr.expiring-month {
+    background-color: #f1f8e9;
+}
+
+tr.expiring-month td {
+    color: #558b2f;
+}
+
+tr.valid {
+    background-color: #e8f5e9;
+}
+
+tr.valid td {
+    color: #2e7d32;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filters {
+        flex-direction: column;
+    }
+    
+    .filter-group,
+    .sort-group {
+        min-width: 100%;
+    }
+    
+    table {
+        font-size: 14px;
+    }
+    
+    table th,
+    table td {
+        padding: 8px 4px;
+    }
 }
